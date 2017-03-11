@@ -4,13 +4,13 @@ Created on 2017年3月9日
 
 @author: winston
 '''
+from collection.tool_chinese import get_first_chars
+from utils.tool_env import is_string, is_unicode
+import pandas
 import re
 import urllib
 import urllib2
 
-import pandas
-from numpy.distutils.misc_util import is_string
-from collection.tool_chinese import get_first_chars
 
 def get_integer(s):
     try:
@@ -34,7 +34,7 @@ def get_name_properties(keyword, url='http://www.baike.com/wiki/%s'):
     for x in df.to_dict('records'):
         for v in x.values():
             
-            if is_string(v) or isinstance(v, unicode):
+            if is_string(v) or is_unicode(v):
                 name, value = v.split(u'：', 1)
                 name, value = purdge(name.strip(), value.strip())
                 rtn.setdefault(name, value)
