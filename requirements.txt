@@ -1,0 +1,5 @@
+django
+lxml
+html5lib
+pandas
+BeautifulSoup4

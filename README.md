@@ -11,4 +11,8 @@
 	python manage.py creatsuperuser
 	
 5. 登录管理后台
-	http://localhost:8000/admin/
+	命令: python manage.py runserver
+	访问连接: http://localhost:8000/admin/
+
+6. 抓取姓名
+	命令: python manage.py cmd --name <name>  参数: name 姓名
