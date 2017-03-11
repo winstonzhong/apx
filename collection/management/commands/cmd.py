@@ -12,5 +12,5 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         if options.get('name'):
-            name = options.get('name').decode('utf8')
+            name = options.get('name').decode('cp936')#.decode('utf8')
             return PersonRecord.add(name)

@@ -27,14 +27,14 @@ def get_index(keyword, url='http://rank.chinaz.com/ajaxsync.aspx?at=index'):
 def get_name_properties(keyword, url='http://www.baike.com/wiki/%s'):
     url = url % keyword
     content = urllib2.urlopen(url, timeout=15).read()
-#     content
+#     print content
     df = pandas.read_html(content)[0]
     
     rtn = {}
     for x in df.to_dict('records'):
         for v in x.values():
-            if is_string(v):
-#                 print v
+            
+            if is_string(v) or isinstance(v, unicode):
                 name, value = v.split(u'：', 1)
                 name, value = purdge(name.strip(), value.strip())
                 rtn.setdefault(name, value)
