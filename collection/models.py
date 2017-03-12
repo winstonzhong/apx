@@ -1,8 +1,16 @@
 # encoding: utf-8
 from __future__ import unicode_literals
 
+import base64
+import json
+import zlib
+
 from django.db import models
-from collection.tool_net import get_name_properties, get_index
+
+from collection.tool_net import get_name_properties, get_index, \
+    NoTableFoundError
+from utils.tool_env import force_utf8, force_unicode
+
 
 # Create your models here.
 class PersonRecord(models.Model):
@@ -13,20 +21,73 @@ class PersonRecord(models.Model):
     tz = models.FloatField(blank=True, null=True, verbose_name=u'体重')
     xx = models.CharField(max_length=5, blank=True, null=True, verbose_name=u'血型')
     csny = models.DateField(blank=True, null=True, verbose_name=u'出生年月')
+    qsny = models.DateField(blank=True, null=True, verbose_name=u'去世年月')
     xz = models.CharField(max_length=8, blank=True, null=True, verbose_name=u'星座')
+    zy = models.CharField(max_length=8, blank=True, null=True, verbose_name=u'职业')
+    
     
     bd_index = models.IntegerField(blank=True, null=True, verbose_name=u'百度指数')
     
+    all_props = models.BinaryField(blank=True, null=True, verbose_name=u'所有属性')
     
+    updated = models.NullBooleanField(blank=True, null=True)
+
+
+    def cddq(self):
+        d = self.get_all_props()
+        return d.get('cddq', '')
+    cddq.short_description = u'出道地区'
+
+    def tinfo(self):
+        return u"<a href='http://www.baike.com/wiki/%s' target=blank>百科</a>" % (force_unicode(self.zwm))
+    tinfo.allow_tags = True
+    tinfo.short_description = u'信息源'
+    
+    
+    def get_all_props(self):
+        return json.loads(zlib.decompress(base64.b64decode(self.all_props))) if self.all_props is not None else {}
+        
     @classmethod
     def get_field_names(cls):
         return map(lambda x:x.name, PersonRecord._meta.fields)
     
     @classmethod
     def add(cls, name):
-        name = name.encode('utf8')
-        d = get_name_properties(name)
-        d['bd_index'] = get_index(name)
-        d = {k:v for k,v in d.items() if k in cls.get_field_names()}
-        cls.objects.get_or_create(zwm=d.get('zwm'), defaults=d)
+        name = force_utf8(name)
+        pr, _ = cls.objects.get_or_create(zwm=name, defaults= {'bd_index':get_index(name)})
+        return pr
         
+    @classmethod
+    def update(cls, name):
+        try:
+            name = force_utf8(name)
+            
+            d, relations = get_name_properties(name)
+
+            d['zwm'] = name
+            
+            d['all_props'] = base64.b64encode(zlib.compress(json.dumps(d)))
+            
+            d['updated'] = 1
+            
+            d = {k:v for k,v in d.items() if k in cls.get_field_names()}
+            cls.objects.update_or_create(zwm=d.get('zwm'), defaults=d)
+            for x in relations:
+                cls.add(x)
+
+        except NoTableFoundError:
+            cls.objects.update_or_create(zwm=name, defaults={'updated':0})    
+    @classmethod
+    def get_person_not_updated(cls):
+        pr = PersonRecord.objects.filter(updated=None).order_by('-bd_index').first() or cls.add(u'张国荣')
+        return pr
+            
+        
+    @classmethod
+    def step(cls):
+        pr = cls.get_person_not_updated()
+        if pr is None:
+            return False
+        print "Updating:", pr.zwm
+        cls.update(pr.zwm)
+        return True
