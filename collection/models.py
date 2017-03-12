@@ -8,7 +8,7 @@ import zlib
 from django.db import models
 
 from collection.tool_net import get_name_properties, get_index, \
-    NoTableFoundError
+    NoTableFoundError, NoPropertiesError
 from utils.tool_env import force_utf8, force_unicode
 
 
@@ -75,7 +75,7 @@ class PersonRecord(models.Model):
             for x in relations:
                 cls.add(x)
 
-        except NoTableFoundError:
+        except (NoTableFoundError,NoPropertiesError):
             cls.objects.update_or_create(zwm=name, defaults={'updated':0})    
     @classmethod
     def get_person_not_updated(cls):

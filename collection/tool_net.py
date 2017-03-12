@@ -6,16 +6,19 @@ Created on 2017年3月9日
 '''
 import re
 import urllib
-import urllib2
 
 import pandas
 from pyquery.pyquery import PyQuery
 
 from collection.tool_chinese import get_first_chars
 from utils.tool_env import is_string, is_unicode, to_date, dash_date
+from utils.urlopen import urlopen
 
 
 class NoTableFoundError(Exception):
+    pass
+
+class NoPropertiesError(Exception):
     pass
 
 def get_real_name(name=None):
@@ -31,14 +34,14 @@ def get_integer(s):
 def get_index(keyword, url='http://rank.chinaz.com/ajaxsync.aspx?at=index'):
 #     keyword = get_real_name(keyword)
     data = urllib.urlencode({'kw':keyword})
-    content = urllib2.urlopen(url, data=data, timeout=15).read()
+    content = urlopen(url, data=data, timeout=15)
 #     print content
     m = re.search("index:'(\d+)'", content)
     return m.groups()[0] if m is not None else 0
 
 
 def get_name_relations(keyword=None, url='http://www.baike.com/wiki/%s', content=None):
-    content = content or urllib2.urlopen(url % keyword, timeout=15).read()
+    content = content or urlopen(url % keyword, timeout=15)
     d = PyQuery(content)
     
     x = d('#figurerelation')
@@ -51,11 +54,11 @@ def get_name_relations(keyword=None, url='http://www.baike.com/wiki/%s', content
 
 def get_name_properties(keyword, url='http://www.baike.com/wiki/%s'):
     url = url % keyword
-    content = urllib2.urlopen(url, timeout=15).read()
+    content = urlopen(url, timeout=15)
 #     print content
     try:
         df = pandas.read_html(content)[0]
-    except ValueError:
+    except (ValueError,TypeError):
         raise NoTableFoundError
     
     rtn = {}
@@ -63,7 +66,10 @@ def get_name_properties(keyword, url='http://www.baike.com/wiki/%s'):
         for v in x.values():
             
             if is_string(v) or is_unicode(v):
-                name, value = v.split(u'：', 1)
+                p = v.split(u'：', 1)
+                if len(p) != 2:
+                    raise NoPropertiesError
+                name, value = p
                 name, value = purdge(name.strip(), value.strip())
                 rtn.setdefault(name, value)
     return rtn, get_name_relations(content=content)
