@@ -24,6 +24,7 @@ class PersonRecord(models.Model):
     qsny = models.DateField(blank=True, null=True, verbose_name=u'去世年月')
     xz = models.CharField(max_length=8, blank=True, null=True, verbose_name=u'星座')
     zy = models.CharField(max_length=8, blank=True, null=True, verbose_name=u'职业')
+    tc = models.CharField(max_length=100, blank=True, null=True, verbose_name=u'特长')
     
     
     bd_index = models.IntegerField(blank=True, null=True, verbose_name=u'百度指数')
