@@ -16,10 +16,13 @@ from utils.urlopen import urlopen
 
 
 class NoTableFoundError(Exception):
-    pass
+    code = 2
 
 class NoPropertiesError(Exception):
-    pass
+    code = 3
+
+class DumpPropertyError(Exception):
+    code = 4
 
 def get_real_name(name=None):
     return name.split('[', 1)[0].strip() 

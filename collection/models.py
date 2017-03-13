@@ -8,7 +8,7 @@ import zlib
 from django.db import models
 
 from collection.tool_net import get_name_properties, get_index, \
-    NoTableFoundError, NoPropertiesError
+    NoTableFoundError, NoPropertiesError, DumpPropertyError
 from utils.tool_env import force_utf8, force_unicode
 
 
@@ -30,7 +30,7 @@ class PersonRecord(models.Model):
     
     all_props = models.BinaryField(blank=True, null=True, verbose_name=u'所有属性')
     
-    updated = models.NullBooleanField(blank=True, null=True)
+    updated = models.PositiveSmallIntegerField(blank=True, null=True)
 
 
     def cddq(self):
@@ -58,6 +58,12 @@ class PersonRecord(models.Model):
         return pr
         
     @classmethod
+    def dump_props(cls, d):
+        try:
+            return base64.b64encode(zlib.compress(json.dumps(d)))
+        except Exception:
+            raise DumpPropertyError
+    @classmethod
     def update(cls, name):
         try:
             name = force_utf8(name)
@@ -66,7 +72,7 @@ class PersonRecord(models.Model):
 
             d['zwm'] = name
             
-            d['all_props'] = base64.b64encode(zlib.compress(json.dumps(d)))
+            d['all_props'] = cls.dump_props(d)
             
             d['updated'] = 1
             
@@ -75,8 +81,9 @@ class PersonRecord(models.Model):
             for x in relations:
                 cls.add(x)
 
-        except (NoTableFoundError,NoPropertiesError):
-            cls.objects.update_or_create(zwm=name, defaults={'updated':0})    
+        except (NoTableFoundError,NoPropertiesError, DumpPropertyError) as e:
+            cls.objects.update_or_create(zwm=name, defaults={'updated':e.code})
+            
     @classmethod
     def get_person_not_updated(cls):
         pr = PersonRecord.objects.filter(updated=None).order_by('-bd_index').first() or cls.add(u'张国荣')
