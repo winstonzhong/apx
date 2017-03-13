@@ -2,7 +2,7 @@
 
 from datetime import date as thedate
 from datetime import datetime
-
+import re
 from time import mktime, strptime
 
 import chardet
@@ -71,6 +71,17 @@ def to_date(date):
         return datetime.fromtimestamp(mktime(strptime(dash_date(date)[:10], "%Y-%m-%d"))).date()
     except:
         pass
+    
+def split_english_words(words, ptn=re.compile('[^a-z]+')):
+    '''
+    >>> split_english_words('aaa bbb') == ['aaa', 'bbb']
+    True
+    >>> split_english_words('Mark Chao/Mark Zhao') == ['zhao', 'chao', 'mark']
+    True
+    >>> split_english_words('  Jacqueline   LI Xiao-Lu') == ['jacqueline', 'lu', 'xiao', 'li']
+    True
+    '''
+    return list(set(ptn.split(words.lower().strip())))
     
 
 if __name__ == '__main__':

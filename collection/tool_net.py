@@ -11,9 +11,11 @@ import pandas
 from pyquery.pyquery import PyQuery
 
 from collection.tool_chinese import get_first_chars
-from utils.tool_env import is_string, is_unicode, to_date, dash_date
+from utils.tool_env import is_string, is_unicode, to_date, dash_date,\
+    force_unicode
 from utils.urlopen import urlopen
 
+CODE_OTHER_EXCEPTIONS = 100
 
 class NoTableFoundError(Exception):
     code = 2
@@ -23,6 +25,9 @@ class NoPropertiesError(Exception):
 
 class DumpPropertyError(Exception):
     code = 4
+
+class JBQMNameParseError(Exception):
+    code = 5
 
 def get_real_name(name=None):
     return name.split('[', 1)[0].strip() 
@@ -35,8 +40,7 @@ def get_integer(s):
         pass
 
 def get_index(keyword, url='http://rank.chinaz.com/ajaxsync.aspx?at=index'):
-#     keyword = get_real_name(keyword)
-    data = urllib.urlencode({'kw':keyword})
+    data = urllib.urlencode({'kw':get_real_name(keyword)})
     content = urlopen(url, data=data, timeout=15)
 #     print content
     m = re.search("index:'(\d+)'", content)
@@ -87,10 +91,44 @@ def purdge(key, value):
     return get_first_chars(key), value
         
 
-#         print dir(a)
-#         print a.attr('href'), a.text()
-#         break
+def get_name_info(name, url='http://www.jinbangqm.com/names/%s.html'):
+    content = urlopen(url % get_real_name(name), timeout=15)
+#     print content
+    try:
+        dfs = pandas.read_html(content)
+        rtn = dfs[14][1].dropna().tolist()
+        rtn += dfs[15][1].dropna().tolist()
+        rtn.remove(u'不论凶吉')
+        return ','.join(rtn)
+    except (ValueError,TypeError):
+        raise JBQMNameParseError
     
-    
+
+def get_english_info(word, url='http://www.bing.com/dict/search?q=%s'):
+    content = urlopen(url % word, timeout=15).decode('utf8')
+    d = PyQuery(content)
+    return ','.join(map(lambda x:x.text(), d("span.def").items()))
+
+# def get_english_infos(name):
+#     return ','.join(lambda x:get_english_info(x), re.split('\s+', name.strip()))
+def get_common_english_names(url="https://www.douban.com/note/138477313/", q='div#link-report', sex=0):
+    content = urlopen(url , timeout=15)
+    d = PyQuery(force_unicode(content))
+    if sex is None:
+        sex = 1
+    for x in filter(lambda x:len(x) > 1, re.findall('[a-zA-Z]+', d(q).text())):
+        if x == 'Abigail':
+            sex = 0
+        yield x, sex
+
+
 if __name__ == '__main__':
-    print get_index('刘丹[大陆女演员]') 
+    to_import = [
+        {'url':"https://www.douban.com/note/138477313/", 'q':'div#link-report', 'sex':0},
+        {'url':"http://blog.renren.com/share/243317589/1192669473", 'q':'div#shareBody', 'sex':1},
+        
+        {'url':"http://blog.sina.com.cn/s/blog_49b5f65f0100o5mh.html", 'q':'div#sina_keyword_ad_area2', 'sex':None},
+        
+                 ]
+    for x in get_common_english_names(**to_import[2]):
+        print x 

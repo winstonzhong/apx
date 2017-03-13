@@ -8,11 +8,24 @@ import zlib
 from django.db import models
 
 from collection.tool_net import get_name_properties, get_index, \
-    NoTableFoundError, NoPropertiesError, DumpPropertyError
-from utils.tool_env import force_utf8, force_unicode
+    NoTableFoundError, NoPropertiesError, DumpPropertyError, JBQMNameParseError, \
+    get_name_info, CODE_OTHER_EXCEPTIONS, get_english_info
+from utils.tool_env import force_utf8, force_unicode, split_english_words
 
 
-# Create your models here.
+class CommonEnglishNames(models.Model):
+    name = models.CharField(max_length=100, primary_key=True, verbose_name=u'英文名')
+    sex = models.NullBooleanField(null=True, blank=True)
+    sex_count = models.SmallIntegerField(default=0)
+    
+    def save(self, force_insert=False, force_update=False, using=None, 
+        update_fields=None):
+        if self.sex == 1:
+            self.sex_count +=1
+        elif self.sex == 0:
+            self.sex_count -=1
+        return models.Model.save(self, force_insert=force_insert, force_update=force_update, using=using, update_fields=update_fields)
+
 class PersonRecord(models.Model):
     zwm = models.CharField(max_length=100, primary_key=True, verbose_name=u'中文名')
     ywm = models.CharField(max_length=100, blank=True, null=True, verbose_name=u'英文名称')
@@ -31,6 +44,10 @@ class PersonRecord(models.Model):
     all_props = models.BinaryField(blank=True, null=True, verbose_name=u'所有属性')
     
     updated = models.PositiveSmallIntegerField(blank=True, null=True)
+    
+    name_shuli = models.CharField(max_length=100, blank=True, null=True, verbose_name=u'金榜数理')
+    
+    english_info = models.TextField(blank=True, null=True, verbose_name=u'英文名词典')
 
 
     def cddq(self):
@@ -54,6 +71,7 @@ class PersonRecord(models.Model):
     @classmethod
     def add(cls, name):
         name = force_utf8(name)
+#         print name
         pr, _ = cls.objects.get_or_create(zwm=name, defaults= {'bd_index':get_index(name)})
         return pr
         
@@ -63,6 +81,16 @@ class PersonRecord(models.Model):
             return base64.b64encode(zlib.compress(json.dumps(d)))
         except Exception:
             raise DumpPropertyError
+    
+    
+    @classmethod
+    def get_english_info(cls, name):
+        if name:
+            words = split_english_words(name)
+            d = {x:get_english_info(x) for x in words}
+            return json.dumps(d)
+        
+    
     @classmethod
     def update(cls, name):
         try:
@@ -74,6 +102,10 @@ class PersonRecord(models.Model):
             
             d['all_props'] = cls.dump_props(d)
             
+            d['name_shuli'] = get_name_info(name)
+            
+            d['english_info'] = cls.get_english_info(d.get('ywm'))
+            
             d['updated'] = 1
             
             d = {k:v for k,v in d.items() if k in cls.get_field_names()}
@@ -81,8 +113,10 @@ class PersonRecord(models.Model):
             for x in relations:
                 cls.add(x)
 
-        except (NoTableFoundError,NoPropertiesError, DumpPropertyError) as e:
+        except (NoTableFoundError,NoPropertiesError, DumpPropertyError, JBQMNameParseError) as e:
             cls.objects.update_or_create(zwm=name, defaults={'updated':e.code})
+        except Exception:
+            cls.objects.update_or_create(zwm=name, defaults={'updated':CODE_OTHER_EXCEPTIONS})
             
     @classmethod
     def get_person_not_updated(cls):
