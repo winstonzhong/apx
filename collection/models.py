@@ -24,7 +24,6 @@ class PersonRecord(models.Model):
     qsny = models.DateField(blank=True, null=True, verbose_name=u'去世年月')
     xz = models.CharField(max_length=8, blank=True, null=True, verbose_name=u'星座')
     zy = models.CharField(max_length=8, blank=True, null=True, verbose_name=u'职业')
-    tc = models.CharField(max_length=100, blank=True, null=True, verbose_name=u'特长')
     
     
     bd_index = models.IntegerField(blank=True, null=True, verbose_name=u'百度指数')
@@ -55,7 +54,7 @@ class PersonRecord(models.Model):
     @classmethod
     def add(cls, name):
         name = force_utf8(name)
-        pr, _ = cls.objects.get_or_create(zwm=name, defaults= {'bd_index':get_index(name)})
+        pr, _ = cls.objects.get_or_create(zwm=name, defaults= {'bd_index':get_index(name), 'zwm':name})
         return pr
         
     @classmethod

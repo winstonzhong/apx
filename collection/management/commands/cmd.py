@@ -17,7 +17,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         if options.get('add'):
             name = force_unicode(options.get('add'))
-            return PersonRecord.add(name)
+            PersonRecord.add(name)
         
         if options.get('run'):
             for i in xrange(options.get('run')):

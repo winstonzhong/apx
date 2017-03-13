@@ -43,6 +43,7 @@ def get_index(keyword, url='http://rank.chinaz.com/ajaxsync.aspx?at=index'):
     return m.groups()[0] if m is not None else 0
 
 
+
 def get_name_relations(keyword=None, url='http://www.baike.com/wiki/%s', content=None):
     content = content or urlopen(url % keyword, timeout=15)
     d = PyQuery(content)
