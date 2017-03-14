@@ -12,8 +12,9 @@ from pyquery.pyquery import PyQuery
 
 from collection.tool_chinese import get_first_chars
 from utils.tool_env import is_string, is_unicode, to_date, dash_date,\
-    force_unicode
+    force_unicode, force_utf8
 from utils.urlopen import urlopen
+from utils.tool_html import remove_garbages
 
 CODE_OTHER_EXCEPTIONS = 100
 
@@ -122,13 +123,41 @@ def get_common_english_names(url="https://www.douban.com/note/138477313/", q='di
         yield x, sex
 
 
+
+def get_missing_birthday(name, url='https://www.bing.com/search?q=%s'):
+    html = urlopen(url % urllib.quote_plus('%s 出生日期' % force_utf8(name)), timeout=15)
+
+    html = force_unicode(html)
+#      
+    html = remove_garbages(html)
+
+    content = PyQuery(html)('body').text()
+
+    ptn = re.compile(u'[\d\s]+年[\d\s]+月[\d\s]+日')
+
+    rtn = map(lambda x:x.strip(), ptn.findall(content))
+    
+    return max(set(rtn), key=lambda x:rtn.count(x)) if rtn else None
+
+def get_missing_gender(name, url='https://www.bing.com/search?q=%s'):
+    url = url % urllib.quote_plus('%s 性别' % force_utf8(name))
+
+    html = urlopen(url, timeout=15)
+
+    html = force_unicode(html)
+#      
+    html = remove_garbages(html)
+
+    content = PyQuery(html)('body').text()
+
+    ptn = re.compile(u'男|女')
+
+    rtn = map(lambda x:x.strip(), ptn.findall(content))
+    
+    return rtn[0] if rtn else None
+
+
 if __name__ == '__main__':
-    to_import = [
-        {'url':"https://www.douban.com/note/138477313/", 'q':'div#link-report', 'sex':0},
-        {'url':"http://blog.renren.com/share/243317589/1192669473", 'q':'div#shareBody', 'sex':1},
-        
-        {'url':"http://blog.sina.com.cn/s/blog_49b5f65f0100o5mh.html", 'q':'div#sina_keyword_ad_area2', 'sex':None},
-        
-                 ]
-    for x in get_common_english_names(**to_import[2]):
-        print x 
+    print get_missing_gender('周星驰')
+    print get_missing_gender('景甜')
+    print get_missing_gender('毛泽东')

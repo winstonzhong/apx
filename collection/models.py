@@ -3,9 +3,13 @@ from __future__ import unicode_literals
 
 import base64
 import json
+import re
 import zlib
 
 from django.db import models
+from django.db.models.aggregates import Sum, Avg, Min, Max, Count
+from django.db.models.expressions import F
+from django.db.models.query_utils import Q
 
 from collection.tool_net import get_name_properties, get_index, \
     NoTableFoundError, NoPropertiesError, DumpPropertyError, JBQMNameParseError, \
@@ -25,6 +29,12 @@ class CommonEnglishNames(models.Model):
         elif self.sex == 0:
             self.sex_count -=1
         return models.Model.save(self, force_insert=force_insert, force_update=force_update, using=using, update_fields=update_fields)
+    
+    @classmethod
+    def get_english_name_gender_count(cls, name):
+        if name:
+            words = re.split('\s+', name.lower())
+            return cls.objects.filter(name__in=words).aggregate(Sum('sex_count')).values()[0]
 
 class PersonRecord(models.Model):
     zwm = models.CharField(max_length=100, primary_key=True, verbose_name=u'中文名')
@@ -54,6 +64,12 @@ class PersonRecord(models.Model):
         d = self.get_all_props()
         return d.get('cddq', '')
     cddq.short_description = u'出道地区'
+
+    def gj(self):
+        d = self.get_all_props()
+        return d.get('gj', '')
+    gj.short_description = u'贯籍'
+
 
     def tinfo(self):
         return u"<a href='http://www.baike.com/wiki/%s' target=blank>百科</a>" % (force_unicode(self.zwm))
