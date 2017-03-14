@@ -1,11 +1,16 @@
+# encoding: utf-8
+import datetime
+
 from django.core.management.base import BaseCommand
 from django.db.models.query_utils import Q
+import pandas
 
 from collection.models import PersonRecord, CommonEnglishNames
 from collection.tool_net import get_name_info, JBQMNameParseError, \
-    get_common_english_names
-from utils.tool_env import force_unicode, force_utf8
-
+    get_common_english_names, get_missing_birthday, get_real_name, \
+    get_missing_gender
+from utils.tool_env import force_unicode, force_utf8, reformat_date_str
+import matplotlib.pyplot as plt
 
 class Command(BaseCommand):
     def add_arguments(self, parser):
@@ -17,6 +22,12 @@ class Command(BaseCommand):
         parser.add_argument('--run', nargs = "?",default=0, help='add a name', type=int)
         parser.add_argument('--patch', action='store_true', default=False, help='patch data with out name info')
         parser.add_argument('--import_english', action='store_true', default=False, help='import english names.')
+        parser.add_argument('--find_missing_birth', action='store_true', default=False, help='find missing birthdays.')
+        parser.add_argument('--find_missing_gender', action='store_true', default=False, help='find missing genders.')
+        
+        parser.add_argument('--fx1', action='store_true', default=False, help='about relationship about english and x0 generations.')
+        
+        
         
 
 
@@ -47,6 +58,31 @@ class Command(BaseCommand):
 #                     pr.updated = e.code
 #                     pr.save()
             return
+
+        if options.get('find_missing_birth'):
+            q = PersonRecord.objects.filter(updated=1, csny=None).order_by('-bd_index')
+            total = q.count()
+            for i, pr in enumerate(q.iterator()):
+                print "Find_missing_birth:%d/%d" % (i, total), pr.zwm,
+                birth = get_missing_birthday(get_real_name(pr.zwm))
+                print birth
+                if birth:
+                    pr.csny = reformat_date_str(birth)
+                    pr.save()
+            return
+
+        if options.get('find_missing_gender'):
+            q = PersonRecord.objects.filter(updated=1, xb=None).order_by('-bd_index')
+            total = q.count()
+            for i, pr in enumerate(q.iterator()):
+                print "Find_missing_gender:%d/%d" % (i, total), pr.zwm,
+                gender = get_missing_gender(get_real_name(pr.zwm))
+                print gender
+                if gender:
+                    pr.xb = gender
+                    pr.save()
+            return
+
         
         if options.get('import_english'):
             to_import = [
@@ -64,3 +100,27 @@ class Command(BaseCommand):
                     cen.sex = sex
                     cen.save()
             return
+
+
+        if options.get('fx1'):
+            q = PersonRecord.objects.filter(Q(zy__contains='演员') |Q( zy__contains='导演') | Q(zy__contains='歌手') | Q(zy__contains='模特'), updated=1).order_by('-bd_index')
+            df = pandas.DataFrame(list(q.values('zwm','ywm','csny', 'xb')))
+            df['gen'] = df.csny.astype(datetime.date).apply(lambda x:int(round(x.year -1900,-1)) if x else None)
+            df['enc'] = map(lambda x: CommonEnglishNames.get_english_name_gender_count(x), df.ywm)
+            def ratio_count(x):
+                return len(x[~x.isnull()]) * 1.0 / len(x)
+            
+            print df.groupby('gen').enc.apply(ratio_count)
+            
+            df = df[~df.ywm.isnull()]
+
+            g = df.groupby('gen').enc.apply(ratio_count)
+            
+            g.plot.bar()
+            
+            plt.show()
+            
+            print g
+            
+            return
+

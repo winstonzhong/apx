@@ -6,7 +6,7 @@ from collection.models import PersonRecord, CommonEnglishNames
 # Register your models here.
 @admin.register(PersonRecord)
 class PersonRecordAdmin(admin.ModelAdmin):
-    list_display = ['zwm', 'tinfo', 'ywm', 'xb', 'sg', 'tz', 'xx', 'csny','qsny', 'xz', 'zy', 'cddq', 'bd_index', 'name_shuli', 'updated']
+    list_display = ['zwm', 'tinfo', 'ywm', 'xb', 'sg', 'tz', 'xx', 'csny','qsny', 'xz', 'zy', 'cddq', 'gj','bd_index', 'name_shuli', 'updated']
 
 
 
