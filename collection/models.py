@@ -70,8 +70,12 @@ class PersonRecord(models.Model):
     
     @classmethod
     def add(cls, name):
+        # 编码为utf8
         name = force_utf8(name)
 #         print name
+        # 创建或者取出一条符合要求的记录
+        #  1. 如果没有记录, 则创建;
+        #  2. 如果有记录, 则取出该条记录.
         pr, _ = cls.objects.get_or_create(zwm=name, defaults= {'bd_index':get_index(name)})
         return pr
         
@@ -94,6 +98,7 @@ class PersonRecord(models.Model):
     @classmethod
     def update(cls, name):
         try:
+            # 编码为utf8
             name = force_utf8(name)
             
             d, relations = get_name_properties(name)

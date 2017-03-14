@@ -1,3 +1,4 @@
+# encoding: utf-8
 from django.core.management.base import BaseCommand
 from django.db.models.query_utils import Q
 
@@ -9,6 +10,7 @@ from utils.tool_env import force_unicode, force_utf8
 
 class Command(BaseCommand):
     def add_arguments(self, parser):
+        """定义参数"""
         # Positional arguments
 #         parser.add_argument('args', nargs='*', type=str)
         
@@ -21,6 +23,7 @@ class Command(BaseCommand):
 
 
     def handle(self, *args, **options):
+        """参数指向"""
         if options.get('add'):
             name = force_unicode(options.get('add'))
             PersonRecord.add(name)
