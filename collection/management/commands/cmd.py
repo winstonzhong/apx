@@ -25,7 +25,9 @@ class Command(BaseCommand):
         parser.add_argument('--find_missing_birth', action='store_true', default=False, help='find missing birthdays.')
         parser.add_argument('--find_missing_gender', action='store_true', default=False, help='find missing genders.')
         
+        parser.add_argument('--export', nargs = "?",default=0, help='export head n records order by bd inex from database to to excel')
         parser.add_argument('--fx1', action='store_true', default=False, help='about relationship about english and x0 generations.')
+        
         
         
         
@@ -105,22 +107,39 @@ class Command(BaseCommand):
         if options.get('fx1'):
             q = PersonRecord.objects.filter(Q(zy__contains='演员') |Q( zy__contains='导演') | Q(zy__contains='歌手') | Q(zy__contains='模特'), updated=1).order_by('-bd_index')
             df = pandas.DataFrame(list(q.values('zwm','ywm','csny', 'xb')))
-            df['gen'] = df.csny.astype(datetime.date).apply(lambda x:int(round(x.year -1900,-1)) if x else None)
+            df['gen'] = df.csny.astype(datetime.date).apply(lambda x:(x.year -1900)/10 * 10 if x else None)
             df['enc'] = map(lambda x: CommonEnglishNames.get_english_name_gender_count(x), df.ywm)
+#             df.xb = df.xb.apply(lambda x: {u'男':'M', u"女":'F'}.get(x))
+            
             def ratio_count(x):
                 return len(x[~x.isnull()]) * 1.0 / len(x)
             
-            print df.groupby('gen').enc.apply(ratio_count)
+#             print df.groupby('gen').enc.apply(ratio_count)
             
-            df = df[~df.ywm.isnull()]
+            df = df[(~df.ywm.isnull()) & (~df.gen.isnull())]
+            
+            df = df.iloc[:500]
+            
+            g = df.groupby(['gen']).enc.apply(ratio_count)
+            
+            r = g.plot(kind='bar', rot=1)
+            
+#             for i in range(len(r.containers[0])):
+#                 r.containers[0][i].set_color(['blue', 'red'][i % 2])
 
-            g = df.groupby('gen').enc.apply(ratio_count)
-            
-            g.plot.bar()
-            
             plt.show()
-            
+             
             print g
             
+            df.to_excel('/home/winston/fx1.xls', 'fx1')
+            
             return
-
+        
+        if options.get('export'):
+            count = options.get('export')
+            q = PersonRecord.objects.filter(Q(zy__contains='演员') |Q( zy__contains='导演') | Q(zy__contains='歌手') | Q(zy__contains='模特'), updated=1).order_by('-bd_index')[:count]
+            df = pandas.DataFrame(list(q.values('zwm','ywm','csny', 'xb', 'bd_index')))
+            df.to_excel('/home/winston/data.xls', 'stars')
+            return 
+            
+            
