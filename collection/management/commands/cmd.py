@@ -1,5 +1,6 @@
 # encoding: utf-8
 import datetime
+
 from django.core.management.base import BaseCommand
 from django.db.models.query_utils import Q
 import pandas
@@ -8,8 +9,9 @@ from collection.models import PersonRecord, CommonEnglishNames
 from collection.tool_net import get_name_info, JBQMNameParseError, \
     get_common_english_names, get_missing_birthday, get_real_name, \
     get_missing_gender
-from utils.tool_env import force_unicode, force_utf8, reformat_date_str
 import matplotlib.pyplot as plt
+from utils.tool_env import force_unicode, force_utf8, reformat_date_str
+
 
 class Command(BaseCommand):
     def add_arguments(self, parser):
@@ -112,8 +114,10 @@ class Command(BaseCommand):
             df['enc'] = map(lambda x: CommonEnglishNames.get_english_name_gender_count(x), df.ywm)
 #             df.xb = df.xb.apply(lambda x: {u'男':'M', u"女":'F'}.get(x))
             
-            def ratio_count(x):
-                return len(x[~x.isnull()]) * 1.0 / len(x)
+            def ratio_count(x, xb=None):
+                if xb is None:
+                    return len(x[~x.enc.isnull()]) * 1.0 / len(x)
+                return len(x[(~x.enc.isnull()) & (x.xb==xb)]) * 1.0 / len(x) 
             
 #             print df.groupby('gen').enc.apply(ratio_count)
             
@@ -121,18 +125,23 @@ class Command(BaseCommand):
             
             df = df.iloc[:500]
             
-            g = df.groupby(['gen']).enc.apply(ratio_count)
+#             g = df.groupby(['gen']).enc.apply(ratio_count)
+            g = df.groupby(['gen'])
             
-            r = g.plot(kind='bar', rot=1)
+            rtn = pandas.DataFrame()
             
-#             for i in range(len(r.containers[0])):
-#                 r.containers[0][i].set_color(['blue', 'red'][i % 2])
+            rtn[u'男'] = g.apply(ratio_count, u'男')
+            rtn[u'女'] = g.apply(ratio_count, u'女')
+            rtn[u'总'] = g.apply(ratio_count)
+            
+            rtn.index.names = [u'年代'] 
+            
+            rtn.plot(kind='bar', rot=0, title=u'明星取传统英文名字和年代的关系')
+            
 
             plt.show()
-             
-            print g
-            
-            df.to_excel('/home/winston/fx1.xls', 'fx1')
+            print rtn
+#             df.to_excel('/home/winston/fx1.xls', 'fx1')
             
             return
         
