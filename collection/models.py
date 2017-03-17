@@ -136,7 +136,8 @@ class PersonRecord(models.Model):
 
         except (NoTableFoundError,NoPropertiesError, DumpPropertyError, JBQMNameParseError) as e:
             cls.objects.update_or_create(zwm=name, defaults={'updated':e.code})
-        except Exception:
+        except Exception as e:
+            print e
             cls.objects.update_or_create(zwm=name, defaults={'updated':CODE_OTHER_EXCEPTIONS})
             
     @classmethod

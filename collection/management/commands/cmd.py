@@ -21,6 +21,7 @@ class Command(BaseCommand):
         
         # Named (optional) arguments
         parser.add_argument('--add', nargs = "?",default=None, help='add a name')
+        
         parser.add_argument('--run', nargs = "?",default=0, help='add a name', type=int)
         parser.add_argument('--patch', action='store_true', default=False, help='patch data with out name info')
         parser.add_argument('--import_english', action='store_true', default=False, help='import english names.')
@@ -30,13 +31,21 @@ class Command(BaseCommand):
         parser.add_argument('--export', nargs = "?",default=0, help='export head n records order by bd inex from database to to excel')
         parser.add_argument('--fx1', action='store_true', default=False, help='about relationship about english and x0 generations.')
         
-        
+        parser.add_argument('--update', nargs = "?",default=None, help='update a single name')
         
         
 
 
     def handle(self, *args, **options):
         """参数指向"""
+
+        if options.get('update'):
+            name = force_unicode(options.get('update'))
+            PersonRecord.add(name)
+            PersonRecord.update(name)
+            return
+
+
         if options.get('add'):
             name = force_unicode(options.get('add'))
             PersonRecord.add(name)
