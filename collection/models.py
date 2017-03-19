@@ -33,7 +33,8 @@ class CommonEnglishNames(models.Model):
     @classmethod
     def get_english_name_gender_count(cls, name):
         if name:
-            words = re.split('\s+', name.lower())
+#             words = map(lambda x:x.strip(), re.split('\s+', name.lower()))
+            words = map(lambda x:x.strip(), split_english_words(name))
             return cls.objects.filter(name__in=words).aggregate(Sum('sex_count')).values()[0]
 
 class PersonRecord(models.Model):

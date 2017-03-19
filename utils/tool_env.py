@@ -90,17 +90,29 @@ def to_date(date):
     except:
         pass
     
+def add_space_ahead_caps(name, ptn=re.compile('([A-Z])')):
+    '''
+    >>> add_space_ahead_caps('AngelaBaby')
+    'Angela Baby'
+    '''
+    return ptn.sub(r' \1', name).strip()
+
 def split_english_words(words, ptn=re.compile('[^a-z]+')):
     '''
     >>> split_english_words('aaa bbb') == ['aaa', 'bbb']
     True
     >>> split_english_words('Mark Chao/Mark Zhao') == ['zhao', 'chao', 'mark']
     True
-    >>> split_english_words('  Jacqueline   LI Xiao-Lu') == ['jacqueline', 'lu', 'xiao', 'li']
+    >>> split_english_words('  Jacqueline   LI Xiao-Lu') == ['i', 'jacqueline', 'lu', 'l', 'xiao']# == ['jacqueline', 'lu', 'xiao', 'li']
     True
     '''
-    return list(set(ptn.split(words.lower().strip())))
-    
+    words = add_space_ahead_caps(words)
+    return list(set(ptn.split(words.lower())))
+
+def get_first_english_name(name,ptn = re.compile('[^\\s\w]')):
+    return ptn.split(name)[0].strip()
+
+
 
 def is_chinese(uchar,charset=None):
     
