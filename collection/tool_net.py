@@ -4,6 +4,7 @@ Created on 2017年3月9日
 
 @author: winston
 '''
+import json
 import re
 import urllib
 
@@ -11,10 +12,11 @@ import pandas
 from pyquery.pyquery import PyQuery
 
 from collection.tool_chinese import get_first_chars
-from utils.tool_env import is_string, is_unicode, to_date, dash_date,\
+from utils.tool_env import is_string, is_unicode, to_date, dash_date, \
     force_unicode, force_utf8
-from utils.urlopen import urlopen
 from utils.tool_html import remove_garbages
+from utils.urlopen import urlopen
+
 
 CODE_OTHER_EXCEPTIONS = 100
 
@@ -158,6 +160,15 @@ def get_missing_gender(name, url='https://www.bing.com/search?q=%s'):
 
 
 if __name__ == '__main__':
-    print get_missing_gender('周星驰')
-    print get_missing_gender('景甜')
-    print get_missing_gender('毛泽东')
+#     print get_missing_gender('周星驰')
+#     print get_missing_gender('景甜')
+#     print get_missing_gender('毛泽东')
+    url = "http://note.youdao.com/yws/public/note/c156777d583837b5eb99657be49e1db4?editorType=0&cstk=-kUCJrQq"
+    content = urlopen(url)
+    d = json.loads(content)
+    html = '''<html><head><meta http-equiv="content-type" content="text/html; charset=utf-8" /> </head><body>{content}</body></html>'''
+    html = html.format(content= d.get('content').encode('utf8'))
+    
+    with open('/home/winston/test.html', 'w') as fp:
+        fp.write(html)
+    print "done"

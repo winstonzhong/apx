@@ -1,15 +1,19 @@
 # encoding: utf-8
 import datetime
+
 from django.core.management.base import BaseCommand
 from django.db.models.query_utils import Q
+import numpy
 import pandas
 
 from collection.models import PersonRecord, CommonEnglishNames
 from collection.tool_net import get_name_info, JBQMNameParseError, \
     get_common_english_names, get_missing_birthday, get_real_name, \
     get_missing_gender
-from utils.tool_env import force_unicode, force_utf8, reformat_date_str
 import matplotlib.pyplot as plt
+from utils.tool_env import force_unicode, force_utf8, reformat_date_str, \
+    get_first_english_name
+
 
 class Command(BaseCommand):
     def add_arguments(self, parser):
@@ -19,20 +23,32 @@ class Command(BaseCommand):
         
         # Named (optional) arguments
         parser.add_argument('--add', nargs = "?",default=None, help='add a name')
+        
         parser.add_argument('--run', nargs = "?",default=0, help='add a name', type=int)
         parser.add_argument('--patch', action='store_true', default=False, help='patch data with out name info')
         parser.add_argument('--import_english', action='store_true', default=False, help='import english names.')
         parser.add_argument('--find_missing_birth', action='store_true', default=False, help='find missing birthdays.')
         parser.add_argument('--find_missing_gender', action='store_true', default=False, help='find missing genders.')
         
-        parser.add_argument('--fx1', action='store_true', default=False, help='about relationship about english and x0 generations.')
+        parser.add_argument('--export', nargs = "?",default=0, help='export head n records order by bd inex from database to to excel')
+        parser.add_argument('--fx1', action='store_true', default=False, help=u'明星取英文名字和年代的关系')
+        parser.add_argument('--fx2', action='store_true', default=False, help=u'明星取英文名字年代、热度、土鳖程度关系散点图')
+        parser.add_argument('--fx3', action='store_true', default=False, help=u'明星名字分数、热度关系极坐标扇面图')
         
-        
+        parser.add_argument('--update', nargs = "?",default=None, help='update a single name')
         
 
 
     def handle(self, *args, **options):
         """参数指向"""
+
+        if options.get('update'):
+            name = force_unicode(options.get('update'))
+            PersonRecord.add(name)
+            PersonRecord.update(name)
+            return
+
+
         if options.get('add'):
             name = force_unicode(options.get('add'))
             PersonRecord.add(name)
@@ -106,22 +122,127 @@ class Command(BaseCommand):
         if options.get('fx1'):
             q = PersonRecord.objects.filter(Q(zy__contains='演员') |Q( zy__contains='导演') | Q(zy__contains='歌手') | Q(zy__contains='模特'), updated=1).order_by('-bd_index')
             df = pandas.DataFrame(list(q.values('zwm','ywm','csny', 'xb')))
-            df['gen'] = df.csny.astype(datetime.date).apply(lambda x:int(round(x.year -1900,-1)) if x else None)
+            df['gen'] = df.csny.astype(datetime.date).apply(lambda x:(x.year -1900)/10 * 10 if x else None)
             df['enc'] = map(lambda x: CommonEnglishNames.get_english_name_gender_count(x), df.ywm)
-            def ratio_count(x):
-                return len(x[~x.isnull()]) * 1.0 / len(x)
+#             df.xb = df.xb.apply(lambda x: {u'男':'M', u"女":'F'}.get(x))
             
-            print df.groupby('gen').enc.apply(ratio_count)
+            def ratio_count(x, xb=None):
+                if xb is None:
+                    return len(x[~x.enc.isnull()]) * 1.0 / len(x)
+                return len(x[(~x.enc.isnull()) & (x.xb==xb)]) * 1.0 / len(x) 
             
-            df = df[~df.ywm.isnull()]
+#             print df.groupby('gen').enc.apply(ratio_count)
+            
+            df = df[(~df.ywm.isnull()) & (~df.gen.isnull())]
+            
+            df = df.iloc[:500]
+            
+#             g = df.groupby(['gen']).enc.apply(ratio_count)
+            g = df.groupby(['gen'])
+            
+            rtn = pandas.DataFrame()
+            
+            rtn[u'男'] = g.apply(ratio_count, u'男')
+            rtn[u'女'] = g.apply(ratio_count, u'女')
+            rtn[u'总'] = g.apply(ratio_count)
+            
+            rtn.index.names = [u'年代'] 
+            
+            rtn.plot(kind='bar', rot=0, title=u'明星取传统英文名字和年代的关系')
+            
 
-            g = df.groupby('gen').enc.apply(ratio_count)
-            
-            g.plot.bar()
-            
             plt.show()
-            
-            print g
+            print rtn
+#             df.to_excel('/home/winston/fx1.xls', 'fx1')
             
             return
+
+        if options.get('export'):
+            count = options.get('export')
+            q = PersonRecord.objects.filter(Q(zy__contains='演员') |Q( zy__contains='导演') | Q(zy__contains='歌手') | Q(zy__contains='模特'), updated=1).order_by('-bd_index')[:count]
+            df = pandas.DataFrame(list(q.values('zwm','ywm','csny', 'xb', 'bd_index')))
+            df.to_excel('/home/winston/data.xls', 'stars')
+            return 
+            
+            
+        if options.get('fx2'):
+            q = PersonRecord.objects.filter(Q(zy__contains='演员') |Q( zy__contains='导演') | Q(zy__contains='歌手') | Q(zy__contains='模特'), updated=1).order_by('-bd_index')
+            df = pandas.DataFrame(list(q.values('zwm','ywm','csny', 'xb', 'bd_index')))
+            df.csny = df.csny.astype(datetime.date)
+            df['gen'] = df.csny.apply(lambda x:(x.year -1900)/10 * 10 if x else None)
+            df['enc'] = map(lambda x: CommonEnglishNames.get_english_name_gender_count(x), df.ywm)
+            df['fontsize'] = df.bd_index * 30.0 / df.bd_index.max()
+            
+            df = df[(~df.ywm.isnull()) & (~df.gen.isnull())]
+            
+            df = df.iloc[:500]
+            print df
+
+            fig, ax = plt.subplots() # note we must use plt.subplots, not plt.subplot
+            def get_name_text(x):
+                return '%s\n%s' % (x.zwm, get_first_english_name(x.ywm))
+            
+            def get_face_color(x):
+                if numpy.isnan(x.enc):
+                    return 'green'
+                return 'red'
+            
+            def plot_name(x):
+                fc = get_face_color(x)
+                item = ax.text(x.csny.year, x.bd_index, get_name_text(x), color='black', alpha=0.5, bbox=dict(facecolor=fc, edgecolor='red', boxstyle='round,pad=1', alpha=0.5))
+#                 item = ax.text(x.csny.year, x.bd_index, get_name_text(x), color='black', alpha=0.5 )#,bbox=dict(facecolor='green', edgecolor='red', boxstyle='round,pad=1'))
+                item.set_fontsize(x.fontsize)
+                item.set_ha('center')
+                item.set_va('center')
+                
+                
+            for i in range(len(df)):
+                plot_name(df.iloc[i])
+            
+            plt.ylim((df.bd_index.min(),df.bd_index.max() * 1.2))
+            plt.xlim((df.csny.min().year, df.csny.max().year))
+            plt.show()
+            
+            return
+        
+        if options.get('fx3'):
+            q = PersonRecord.objects.filter(Q(zy__contains='演员') |Q( zy__contains='导演') | Q(zy__contains='歌手') | Q(zy__contains='模特'), updated=1).order_by('-bd_index')
+            df = pandas.DataFrame(list(q.values('zwm', 'bd_index', 'name_shuli')))
+            df.zwm = df.zwm.apply(lambda x:get_real_name(x))
+            df = df.drop_duplicates()
+
+#             df = df[(~df.gen.isnull())]
+            score_map = {u'大凶':-70, u'凶':-50, u'半吉':-30, u'吉':-10, }
+            
+            def get_name_score(s):
+                return sum(map(lambda x:score_map.get(x, 0), s.split(','))) + 360
+            
+            df['score'] = df.name_shuli.apply(get_name_score)
+            df['heat'] = df.bd_index * 10.0 / df.bd_index.max()
+            
+            df = df.iloc[:500]
+         
+            print df
+#             return
+            
+            
+            N = len(df)
+            
+#             theta = numpy.linspace(0.0, 2 * numpy.pi, N, endpoint=False)
+#             theta = [0] * N
+            theta = 2 * numpy.pi * numpy.random.rand(N)
+            
+            radii = df.heat.tolist()
+            
+            width = map(lambda x:x * 2 * numpy.pi / 360.0, df.score)
+            
+            ax = plt.subplot(111, projection='polar')
+            
+            bars = ax.bar(theta, radii, width=width, bottom=0.0)
+            
+            for r, bar in zip(radii, bars):
+                bar.set_facecolor(plt.cm.hsv(r / 10.))
+                bar.set_alpha(0.5)
+            
+            plt.show()
 
