@@ -31,6 +31,14 @@ class CommonEnglishNames(models.Model):
         return models.Model.save(self, force_insert=force_insert, force_update=force_update, using=using, update_fields=update_fields)
     
     @classmethod
+    def get_unique_words(cls, name, notin=['lee', 'lin']):
+        if name:
+            words = map(lambda x:x.strip(), split_english_words(name))
+            words = filter(lambda x:x not in notin, words)
+            return map(lambda x:x.values()[0], cls.objects.filter(name__in=words).values('name'))
+#             return cls.objects.filter(name__in=words).aggregate(Sum('sex_count')).values()[0]
+        
+    @classmethod
     def get_english_name_gender_count(cls, name):
         if name:
 #             words = map(lambda x:x.strip(), re.split('\s+', name.lower()))

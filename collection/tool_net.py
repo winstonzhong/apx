@@ -4,6 +4,7 @@ Created on 2017年3月9日
 
 @author: winston
 '''
+import StringIO
 import json
 import re
 import urllib
@@ -158,12 +159,7 @@ def get_missing_gender(name, url='https://www.bing.com/search?q=%s'):
     
     return rtn[0] if rtn else None
 
-
-if __name__ == '__main__':
-#     print get_missing_gender('周星驰')
-#     print get_missing_gender('景甜')
-#     print get_missing_gender('毛泽东')
-    url = "http://note.youdao.com/yws/public/note/c156777d583837b5eb99657be49e1db4?editorType=0&cstk=-kUCJrQq"
+def save_youdao_cloud_note(url = "http://note.youdao.com/yws/public/note/c156777d583837b5eb99657be49e1db4?editorType=0&cstk=-kUCJrQq"):
     content = urlopen(url)
     d = json.loads(content)
     html = '''<html><head><meta http-equiv="content-type" content="text/html; charset=utf-8" /> </head><body>{content}</body></html>'''
@@ -172,3 +168,29 @@ if __name__ == '__main__':
     with open('/home/winston/test.html', 'w') as fp:
         fp.write(html)
     print "done"
+
+def get_name_img_url(name, url="https://cn.bing.com/images/async?q=%s"):
+    html = urlopen(url % urllib.quote_plus(force_utf8(name)), timeout=15)
+#     print html
+    content = PyQuery(html)
+    
+    img_url =  content.items('img.mimg').next().attr('src')
+    
+#     print urlopen(img_url)
+    return img_url
+
+def get_name_img(name):
+    url = get_name_img_url(name)
+    return StringIO.StringIO(urlopen(url, timeout=15))
+#     for x in content.items('img.mimg'):
+#         print x, x.attr('src')
+#         break
+    
+
+if __name__ == '__main__':
+#     print get_missing_gender('周星驰')
+#     print get_missing_gender('景甜')
+#     print get_missing_gender('毛泽东')
+#     get_name_img('周星驰')
+    print get_name_img_url('张柏芝')
+    

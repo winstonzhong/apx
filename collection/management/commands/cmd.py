@@ -3,13 +3,14 @@ import datetime
 
 from django.core.management.base import BaseCommand
 from django.db.models.query_utils import Q
+from matplotlib.ticker import IndexFormatter
 import numpy
 import pandas
 
 from collection.models import PersonRecord, CommonEnglishNames
 from collection.tool_net import get_name_info, JBQMNameParseError, \
     get_common_english_names, get_missing_birthday, get_real_name, \
-    get_missing_gender
+    get_missing_gender, get_name_img
 import matplotlib.pyplot as plt
 from utils.tool_env import force_unicode, force_utf8, reformat_date_str, \
     get_first_english_name
@@ -34,6 +35,8 @@ class Command(BaseCommand):
         parser.add_argument('--fx1', action='store_true', default=False, help=u'明星取英文名字和年代的关系')
         parser.add_argument('--fx2', action='store_true', default=False, help=u'明星取英文名字年代、热度、土鳖程度关系散点图')
         parser.add_argument('--fx3', action='store_true', default=False, help=u'明星名字分数、热度关系极坐标扇面图')
+        parser.add_argument('--fx4', action='store_true', default=False, help=u'明星英文名重名图1')
+        parser.add_argument('--fx5', action='store_true', default=False, help=u'明星英文名重名图2')
         
         parser.add_argument('--update', nargs = "?",default=None, help='update a single name')
         
@@ -246,3 +249,98 @@ class Command(BaseCommand):
             
             plt.show()
 
+        if options.get('fx4'):
+            q = PersonRecord.objects.filter(Q(zy__contains='演员') |Q( zy__contains='导演') | Q(zy__contains='歌手') | Q(zy__contains='模特'), updated=1).order_by('-bd_index')
+            df = pandas.DataFrame(list(q.values('zwm','ywm','csny', 'xb', 'bd_index')))
+            df.csny = df.csny.astype(datetime.date)
+            df.zwm = df.zwm.apply(lambda x:get_real_name(x))
+            
+            df = df.drop_duplicates()
+            
+            df['gen'] = df.csny.apply(lambda x:(x.year -1900)/10 * 10 if x else None)
+            df['words'] = map(lambda x: CommonEnglishNames.get_unique_words(x), df.ywm)
+            df['word'] = map(lambda x: x[0].capitalize() if x else None, df.words)
+            
+            df = df[(~df.word.isnull()) & (~df.gen.isnull())]
+            
+            df = df.iloc[:500]
+                        
+#             return
+            
+            g = df.groupby(['word']).zwm.count().sort_values(ascending=False)
+            
+#             g = g[(g > 4)]
+            print g.head(10)
+            g.plot.pie()
+            plt.show()
+
+        if options.get('fx5'):
+            q = PersonRecord.objects.filter(Q(zy__contains='演员') |Q( zy__contains='导演') | Q(zy__contains='歌手') | Q(zy__contains='模特'), updated=1).order_by('-bd_index')
+            df = pandas.DataFrame(list(q.values('zwm','ywm','csny', 'xb', 'bd_index')))
+            df.csny = df.csny.astype(datetime.date)
+            df.zwm = df.zwm.apply(lambda x:get_real_name(x))
+            
+            df = df.drop_duplicates()
+            
+            df['gen'] = df.csny.apply(lambda x:(x.year -1900)/10 * 10 if x else None)
+            df['words'] = map(lambda x: CommonEnglishNames.get_unique_words(x), df.ywm)
+            df['word'] = map(lambda x: x[0].capitalize() if x else None, df.words)
+            
+            df = df[(~df.word.isnull()) & (~df.gen.isnull())]
+            
+            df = df.iloc[:500]
+                        
+            g = df.groupby(['word']).zwm.count().sort_values(ascending=False)
+            
+            print g.head(10)
+            
+            df1 =  df[df.word.str.contains(g.index[4])].copy()
+            df1['year'] = map(lambda x:x.year, df1.csny)
+            
+            
+            df1['x'] = (df1.year - df1.year.min()) * 1.0 / (df1.year.max() - df1.year.min())
+            
+#             df1.bd_index.to_list
+#             df1['y'] = df1.bd_index * 1.0 /df1.bd_index.max()
+            df1 = df1.drop_duplicates('zwm').drop_duplicates('ywm')
+            print df1           
+#             return
+            
+            def plot_name_img(ax, i):
+                im = plt.imread(get_name_img(df1.iloc[i].zwm), 'jpeg')
+                imh, imw, _ = im.shape
+                [x0, y0], [x1, y1] = ax.bbox.get_points()
+                
+#                 limx = ax.get_xlim()
+#                 limy = ax.get_ylim()
+                limx = 0, len(df1)
+                limy = 0, len(df1)
+                datawidth = limx[1] - limx[0]
+                dataheight = limy[1] - limy[0]
+                pixelwidth = x1 - x0
+                pixelheight = y1 - y0
+                adaptedwidth = imw * (datawidth / pixelwidth)
+                adaptedheight = imh * (dataheight / pixelheight)
+                    
+                x = df1.iloc[i].x * len(df1)
+                y = len(df1) - i
+                
+#                 print ax.bbox.get_points()
+#                 print x,y
+#                 print adaptedwidth, adaptedheight
+                ax.imshow(im, origin="upper",extent=(x, x + adaptedwidth, y, y + adaptedheight), alpha=0.5)
+
+            ax = plt.subplot(111)
+#             limx = ax.set_xlim((df1.year.min(), df1.year.max()))
+            ax.set_xlim((-1, len(df1)+5))
+            ax.set_ylim((-1, len(df1)+5))
+            ax.set_autoscale_on(False)
+            
+            ixlabel =map(lambda x: int(df1.year.min() + x * (df1.year.max() - df1.year.min()) * 1.0 / len(df1)), range(-1, len(df1)+5))
+            
+            ax.xaxis.set_major_formatter(IndexFormatter(ixlabel))
+            
+            for i in range(len(df1)):
+                plot_name_img(ax, i)
+            ax.set_title(g.index[4])
+            plt.show()         
