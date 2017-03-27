@@ -207,7 +207,7 @@ class Command(BaseCommand):
             df['is_english_name'] = df.apply(lambda x: is_english_name(x['zwm'], x['ywm']), axis=1)
             
             df = df[(~df.ywm.isnull()) & (~df.gen.isnull()) & df.is_english_name==True]
-#             df.to_csv('e:/test/test2.csv',encoding='utf8')
+            df.to_csv('e:/test/test2.csv',encoding='utf8')
             df = df.iloc[:500]
             print df
             color_green = 'green'
@@ -360,11 +360,13 @@ class Command(BaseCommand):
             
             df = df[(~df.word.isnull()) & (~df.gen.isnull())]
             
-            df = df.iloc[:500]
+#             df = df.iloc[:500]
             g = df.groupby(['word']).zwm.count().sort_values(ascending=False)
-            
+            df.to_csv('e:/test/test3.csv',encoding='utf8')
             print g.head(10)
             display_en = g.index[1]
+#             print g['Tiger']
+            return
             df1 =  df[df.word.str.contains(display_en)].copy()
             df1['year'] = map(lambda x:x.year, df1.csny)
             

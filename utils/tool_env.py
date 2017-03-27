@@ -9,7 +9,7 @@ import re
 
 
 pinyin_dict = {}
-dat = os.path.join(PROJECT_DIR, "utils/Mandarin.dat")
+dat = os.path.join(PROJECT_DIR, "utils/Mandarin.txt")
 with open(dat) as f:
     for line in f:
         k, v = line.strip().split('\t')
