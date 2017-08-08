@@ -1,0 +1,37 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf8" />
+<title>页面测试分析</title>
+
+        <link rel="stylesheet" href="/media/css/jquery-ui.css" type="text/css" media="all" />
+        <script src="/media/js/jquery-1.9.1.js"></script>
+        <script src="/media/js/jquery.min.js" type="text/javascript"></script>
+        <script src="/media/js/jquery-ui.min.js" type="text/javascript"></script>
+        
+</head>
+<body>
+	{{body | safe}}
+
+
+<script>
+
+function set_label(eid, label) {
+	$.post( "/api/name_entity/", { hid: "{{hid}}", nid: eid, label: label} );
+}
+
+
+$("[jbid]").hover(
+  function() {
+  var i1 = "<input class=jbqm_testit type=button value='+1'" + " onclick='set_label("+ $(this).attr('jbid') +", 1)';>";
+  var i2 = "<input class=jbqm_testit type=button value='-1'" + " onclick='set_label("+ $(this).attr('jbid') +", -1)';>";
+    $( this ).append(i1 + i2);
+  }, function() {
+    $("input.jbqm_testit").remove();
+  }
+);
+
+</script>
+
+</body>
+
+</html>

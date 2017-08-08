@@ -7,7 +7,8 @@ from matplotlib.ticker import IndexFormatter
 import numpy
 import pandas
 
-from collection.models import PersonRecord, CommonEnglishNames
+from collection.models import PersonRecord, CommonEnglishNames, HtmlContent,\
+    NameEntity, TitleEntity
 from collection.tool_net import get_name_info, JBQMNameParseError, \
     get_common_english_names, get_missing_birthday, get_real_name, \
     get_missing_gender, get_name_img
@@ -40,10 +41,30 @@ class Command(BaseCommand):
         
         parser.add_argument('--update', nargs = "?",default=None, help='update a single name')
         
+        parser.add_argument('--crawl', action='store_true', default=False, help=u'爬取并解析文章')
+        
+        parser.add_argument('--predict', action='store_true', default=False, help=u'预测文章是否含有目标名字')
+        
+        parser.add_argument('--train', action='store_true', default=False, help=u'培训文章标题，名字识别模块')
+        
 
 
     def handle(self, *args, **options):
         """参数指向"""
+        if options.get('train'):
+            NameEntity.train()
+            TitleEntity.train()
+            return
+
+
+        if options.get('predict'):
+            HtmlContent.predict_all()
+            return
+
+        if options.get('crawl'):
+            HtmlContent.crawl_all()
+            return
+
 
         if options.get('update'):
             name = force_unicode(options.get('update'))
@@ -294,7 +315,8 @@ class Command(BaseCommand):
             
             print g.head(10)
             
-            df1 =  df[df.word.str.contains(g.index[4])].copy()
+            pindex = 0
+            df1 =  df[df.word.str.contains(g.index[pindex])].copy()
             df1['year'] = map(lambda x:x.year, df1.csny)
             
             
@@ -342,5 +364,5 @@ class Command(BaseCommand):
             
             for i in range(len(df1)):
                 plot_name_img(ax, i)
-            ax.set_title(g.index[4])
+            ax.set_title(g.index[pindex])
             plt.show()         

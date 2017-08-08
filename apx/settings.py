@@ -11,10 +11,20 @@ https://docs.djangoproject.com/en/1.10/ref/settings/
 """
 
 import os
+import sys
+
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+sys.path.append('/home/winston/workspace/tools')
+sys.path.append('/home/winston/workspace/bigmind')
+
+# from dcxj.base import db_path, abdb_path, tdb_path
+from dcxj.tool_env import svm_python_base, linear_base_dir
+
+sys.path.append(svm_python_base)
+sys.path.append(linear_base_dir)
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.10/howto/deployment/checklist/
@@ -38,6 +48,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'collection',
+    'names',
 ]
 
 MIDDLEWARE = [
@@ -55,7 +66,7 @@ ROOT_URLCONF = 'apx.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': ["media",],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -78,7 +89,22 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': os.path.join(BASE_DIR, '/backup/apx.sqlite3'),
-    }
+    },
+    'names': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': '/backup/names.sqlite3',
+        'OPTIONS': {
+            'timeout': 10,
+            }        
+    
+    },
+             
+}
+
+DATABASE_ROUTERS = ['dcxj.database_router.DatabaseAppsRouter']
+DATABASE_APPS_MAPPING = {
+    'training': 'default',
+    'names': 'names',
 }
 
 
@@ -117,5 +143,10 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.10/howto/static-files/
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 STATIC_URL = '/static/'
+MEDIA_URL = '/media/'
+
