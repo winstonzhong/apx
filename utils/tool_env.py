@@ -1,12 +1,19 @@
 # encoding: utf-8
 
-from datetime import date as thedate
-from datetime import datetime
-import re
+from datetime import date as thedate, datetime
 from time import mktime, strptime
-
+from utils.constants import PROJECT_DIR
 import chardet
+import os
+import re
 
+
+pinyin_dict = {}
+dat = os.path.join(PROJECT_DIR, "utils/Mandarin.txt")
+with open(dat) as f:
+    for line in f:
+        k, v = line.strip().split('\t')
+        pinyin_dict[k] = v.lower().split(" ")
 
 def is_string(s):
     return isinstance(s, str)
@@ -18,7 +25,7 @@ def force_utf8(txt):
     return force_unicode(txt).encode('utf8')
 
 def force_unicode(txt):
-    if isinstance(txt,unicode) or not txt:
+    if isinstance(txt, unicode) or not txt:
         return txt or ''
     ecd = chardet.detect(txt)['encoding']
     if ecd == 'utf-8' or ecd == 'utf8':
@@ -138,7 +145,50 @@ def has_chinese(uchars):
             return True
     return False
 
+def get_pinyin_list(txt):
+    chars = force_unicode(txt)
+    py_list = []
+    for char in chars:
+        char = '%X' % ord(char)
+        char_py_list = pinyin_dict[char]
+        py_list.sort()
+        py_list.append(char_py_list)
+    return py_list
+
+def is_english_name(chinese_name, english_name):
+    """判断英文名是否为中文拼音
+    >>> is_english_name(u'\u5218\u5fb7\u534e', 'Liu De Hua')
+    False
+    >>> is_english_name(u'\u5218\u5fb7\u534e', 'dehualiu')
+    False
+    >>> is_english_name(u'\u5218\u5fb7\u534e', 'Andy Lau')
+    True
+    >>> is_english_name(u'\u5218\u5fb7\u534e', '')
+    False
+    >>> is_english_name('蒋劲夫', 'Jiang Jinfu')
+    False
+    """
+    
+    if not english_name or not english_name.strip():
+        return False
+    chinese_name = chinese_name.split('[')[0]
+    py_list = get_pinyin_list(chinese_name)
+    english_name = english_name.lower()
+    for char_pys in py_list:
+        for char_py in char_pys:
+            char_py = char_py[:-1]
+            if char_py in english_name:
+                english_name = english_name.replace(char_py, '') 
+                break
+    if english_name.strip():
+        return True
+    return False
+    
 
 if __name__ == '__main__':
     import doctest
     print doctest.testmod(verbose=False, report=False)
+#     print get_pinyin_str('蒋劲夫'.decode('utf8'), format='diacritical')
+#     print is_english_name('蒋劲夫', 'Jiang Jinfu')
+#     print "%X" % ord(u'甯')
+    

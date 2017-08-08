@@ -1,7 +1,7 @@
 python 安装
 1. pip install xxx
 
-2. https://pypi.python.org/pypi 下载包; cmd进入目录以后, 使用 python setup.py install
+2. https://pypi.python.org/pypi 下载tar.gz包; 解压包, 通过cmd进入目录以后, 使用 python setup.py install
 ==============================================================================
 
 
