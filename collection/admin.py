@@ -6,7 +6,7 @@ from django.db.models.query_utils import Q
 from autobatch.django_actions import toggle_trainee, set_fake, set_label_1, \
     set_label_n1
 from collection.models import PersonRecord, CommonEnglishNames, HtmlContent, \
-    TitleEntity, NameEntity, Site
+    TitleEntity, NameEntity, Site, Proxy
 
 
 class TrainingListFilter(admin.SimpleListFilter):
@@ -156,3 +156,8 @@ class NameEntityAdmin(admin.ModelAdmin):
 @admin.register(Site)
 class SiteAdmin(admin.ModelAdmin):
     list_display = ['domain', 'url']
+
+@admin.register(Proxy)
+class ProxyAdmin(admin.ModelAdmin):
+    list_display = ['ip', 'port', 'type', 'created_time', 'rate', 'rrate', 'total', 'failed']
+

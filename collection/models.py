@@ -1,9 +1,12 @@
 # encoding: utf-8
 from __future__ import unicode_literals
 
+import StringIO
 import base64
 import json
+from multiprocessing.pool import ThreadPool
 import re
+import time
 import urlparse
 import zlib
 
@@ -14,12 +17,13 @@ from django.db.models.query_utils import Q
 from django.db.transaction import atomic
 from django.utils.functional import cached_property
 import numpy
+import pandas
 from pyquery.pyquery import PyQuery
 
 from collection.tool_net import get_name_properties, get_index, \
     NoTableFoundError, NoPropertiesError, DumpPropertyError, JBQMNameParseError, \
     get_name_info, CODE_OTHER_EXCEPTIONS, get_english_info
-from dcxj.base import get_dns_dict
+from dcxj.base import get_dns_dict, first
 from dcxj.tool_env import CmdProgress
 from names.models import Names
 from training.helper import local_single_redindex_train_svm
@@ -28,8 +32,194 @@ from utils.tool_env import force_utf8, force_unicode, split_english_words, \
     is_chinese
 from utils.tool_html import remove_garbages
 from utils.urlopen import urlopen, PageNotFound404, HtmlMalFormed, HTTP403
+from zwdlib.agent_lite import pick_one_agent
+from zwdlib.tool_net import get_public_ip, is_hide_proxy, fetch
+from zwdlib.urlopen import fetch_url
 
 
+def find_proxies_xici(url='http://www.xicidaili.com/nn/%d', page=1):
+#     user_agent=pick_one_agent(True) 
+#     print user_agent
+    buf = StringIO.StringIO(fetch_url(url % page, user_agent=None))
+    df = pandas.read_html(buf)[0]
+#     return df
+#     public_ip = get_public_ip()
+    df = df[[1,2,5]].iloc[1:].copy()
+#     return df
+    
+    df.columns = ['IP', 'PORT', 'TYPE']
+    return df
+
+
+
+def find_all_proxies(pages=5):
+    df = pandas.DataFrame()
+    for i in range(pages):
+        page = i + 1
+#         print "loading page:", page
+        tmp = find_proxies_xici(page=page)
+        df = df.append(tmp, ignore_index=True)
+    return df
+
+class Proxy(models.Model):
+    ip = models.CharField(max_length=20)
+    port = models.PositiveSmallIntegerField()
+    type = models.CharField(max_length=6)
+    total = models.PositiveIntegerField(default=0)
+    failed = models.PositiveIntegerField(default=0)
+    rate = models.FloatField(default=0)
+    created_time = models.DateTimeField(auto_now=True)
+    json = models.TextField(default='[]')
+    rrate = models.FloatField(default=0, verbose_name='近期成功率')
+ 
+    class Meta:
+        unique_together = [
+            ("ip", "port" ),
+        ]
+        index_together = [
+            ("ip", "port" ),    
+                          ]
+    @classmethod
+    def download_from_kdali(cls):
+        df = pandas.DataFrame()
+        url='https://www.kuaidaili.com/free/inha/%d/'
+        
+#         df = pandas.read_html(url)[0]
+
+        for page in range(10):
+            l = url % (page+1)
+#             print l
+            try:
+                buf = StringIO.StringIO(fetch_url(l, user_agent=None))
+                tmp = pandas.read_html(buf)[0]
+                df = df.append(tmp, ignore_index=True)
+
+            except:
+                pass
+            time.sleep(1)
+    #     return df
+    #     public_ip = get_public_ip()
+        if not df.empty:
+            df = df[[0,1,3]].iloc[1:].copy()
+        #     return df
+            
+            df.columns = ['IP', 'PORT', 'TYPE']
+            cls.import_df(df)
+#         return df
+
+        
+         
+    @classmethod
+    def import_df(cls,df):
+        total = cls.objects.all().count()
+        @atomic(using='default', savepoint=True)
+        def _run():
+            cp = CmdProgress(len(df))
+            for x in df.iterrows():
+                d = x[1].to_dict()
+                d = {k.lower():v for k,v in d.items()}
+#                 print d
+                cls.objects.get_or_create(ip=d.get('ip'), port=d.get('port'),defaults=d)                
+                cp.update()
+        _run()
+        print "%d added!" % (cls.objects.all().count() - total)
+        
+    @classmethod
+    def download_from_xici(cls):
+        cls.import_df(find_proxies_xici())
+    
+    def get_json(self):
+        return json.loads(self.json)
+    
+    def update_json(self, v):
+        l = self.get_json()
+        l.append((int(time.time()), int(v)))
+        old = min(l, key=lambda x:x[0])
+        if time.time() - old[0] >= 24*3600:
+            l.remove(old)
+#             l.pop(0)
+        self.json = json.dumps(l)
+        v1 = filter(lambda x:x[1], l)
+        self.rrate = len(v1)*1.0/len(l)
+        
+    
+    def test(self, public_ip=None):
+        public_ip = public_ip or get_public_ip()
+        v = is_hide_proxy(self.ip, self.port, public_ip)
+        self.total += 1
+        self.failed += not v
+        self.rate = (self.total - self.failed) * 1.0 / self.total
+        self.save()
+        return v
+
+    def test_without_save(self, public_ip=None, total=None, i=None):
+        public_ip = public_ip or get_public_ip()
+        v = is_hide_proxy(self.ip, self.port, public_ip)
+#         print self.ip, self.port, v
+        print "%d/%d" % (i, total), self.ip, self.port,v
+        return (self.id, v)
+    
+    def save_result(self, v):
+        self.total += 1
+        self.failed += not v
+        self.rate = (self.total - self.failed) * 1.0 / self.total
+        self.update_json(v)
+        self.save()
+#         return v
+        
+    @classmethod
+    def get_public_ip(cls):
+        while 1:
+            try:
+                return get_public_ip()
+            except Exception, e:
+                print 'get public ip failed!', e
+                time.sleep(3)
+        
+    @classmethod
+    def test_all(cls):
+        public_ip = cls.get_public_ip()
+        q = cls.objects.filter(Q(total__lt=5) | Q(rate__gte=0.2))
+        total = q.count()
+        for i, x in enumerate(q.iterator()):
+            print "%d/%d" % (i, total), x.ip, x.port,
+            print x.test(public_ip)
+    
+    @classmethod
+    def test_all_thread(cls):
+        public_ip = cls.get_public_ip()
+        q = cls.objects.filter(Q(total__lt=5) | Q(rate__gte=0.1))
+        tp = ThreadPool(4)
+        total = q.count()
+        print "Total:", total
+            
+        r = tp.map(lambda x:x[1].test_without_save(public_ip, total, x[0]), enumerate(q))
+#         return r
+        
+        for x, v in r:
+            r = cls.objects.get(id=x)
+            r.save_result(v)
+#         return r
+        
+    
+    @classmethod
+    def download_and_test_all(cls):
+        while 1:
+            try:
+                cls.download_from_xici()
+                cls.download_from_kdali()
+            except:
+                pass
+            cls.test_all_thread()
+            cls.export()
+    
+    @classmethod
+    def export(cls):
+        q = cls.objects.filter(total__gte=100,  rate__gte=0.8)
+        df = pandas.DataFrame(list(q.values('ip', 'port')))
+        df.to_csv('/backup/proxy.csv', index=False)
+         
+    
 class Link(object):
     def __init__(self, src, refer):
         self.src = src
@@ -508,6 +698,13 @@ class PersonRecord(models.Model):
     
     english_info = models.TextField(blank=True, null=True, verbose_name=u'英文名词典')
 
+
+    @property
+    def zwm_clean(self):
+        if u'[' in self.zwm:
+            return self.zwm[:self.zwm.index(u'[')]
+        return self.zwm
+    
 
     def cddq(self):
         d = self.get_all_props()

@@ -4,38 +4,21 @@ Created on 2017年7月14日
 
 @author: winston
 '''
-import os
+from collections import OrderedDict
+import json
+import sys
 
-import pandas
+from matplotlib.animation import FuncAnimation
+
+import matplotlib.pyplot as plt
+import numpy as np
 
 
-base_dir = os.path.dirname(os.path.dirname(__file__))
+d = {"zp__gte": 0.55, "lb30__lt": 0.5, "zp__lt": 0.7, "pct_chg__lt": -9.0}
 
-data_dir = os.path.join(base_dir, 'data')
+bprops = OrderedDict(sorted(d.iteritems(), key=lambda x:x[0]))
 
-csv1 = os.path.join(data_dir, '2017071311151843.csv')
-csv2 = os.path.join(data_dir, '2017071311133921.csv')
 
-def get_df(csvx):
-    df = pandas.read_csv(csvx, encoding='cp936')
-    df.index = df[u'关键词']
-    tmp = df[u'整体指数']
-    tmp = tmp.drop_duplicates()
-    return tmp
+print bprops
 
-def get_jb_df():
-    return get_df(csv1)
-
-def get_ymw_df():
-    return get_df(csv2)
-
-def get_keywords_not_in_jb():
-    jb = get_jb_df()
-    ym = get_ymw_df()
-    return ym[~ym.index.isin(jb.index)].sort_values(ascending=False)
-
-if __name__ == '__main__':
-    df = get_keywords_not_in_jb()
-    df.to_csv('/home/winston/keywrods.csv', encoding='utf8')
-    print df
-    
+print json.dumps(bprops) 

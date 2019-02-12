@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'collection',
     'names',
+    'mind',
 ]
 
 MIDDLEWARE = [
@@ -96,15 +97,24 @@ DATABASES = {
         'OPTIONS': {
             'timeout': 10,
             }        
-    
+    },
+
+    'mind': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': '/backup/mind.sqlite3',
+        'OPTIONS': {
+            'timeout': 10,
+            }        
     },
              
 }
 
 DATABASE_ROUTERS = ['dcxj.database_router.DatabaseAppsRouter']
 DATABASE_APPS_MAPPING = {
-    'training': 'default',
+    'collection': 'default',
     'names': 'names',
+    'mind': 'mind',
+    
 }
 
 
