@@ -55,7 +55,7 @@
             <b>申请人：赵伟庆</b></td>
         <td style="text-align:right;" colspan="3"> <b>验证码：MCB077</b></td>
         <td style="text-align:right;" colspan="4" width="342">
-            <b>查询编号：14050732</b></td>
+            <b>查询编号：14051732</b></td>
     </tr>
     </thead>
     <tbody>
@@ -155,30 +155,6 @@
                     <span style="font-family:SimSun;font-size:10.5000pt;">已登记 </span><span style="font-family:SimSun;font-size:10.5000pt;"></span></div></td>
                 <td style="border:1.0000pt solid windowtext;" valign="center" width="19"><div class="MsoNormal" style="text-align:center;" align="center"><span style="font-family:SimSun;font-size:10.5000pt;"></span></div></td>
             </tr>
-        
-            <tr>
-                <td style="border:1.0000pt solid windowtext;" valign="center" width="115"><div class="MsoNormal" style="text-align:center;" align="center">
-                    <span style="font-family:SimSun;font-size:10.5000pt;">权0421135</span><span style="font-family:SimSun;font-size:10.5000pt;"></span></div></td>
-
-                <td style="border:1.0000pt solid windowtext;" valign="center" width="56"><div class="MsoNormal" style="text-align:center;" align="center">
-                    <span style="font-family:SimSun;font-size:10.5000pt;">赵伟庆</span><span style="font-family:SimSun;font-size:10.5000pt;"></span></div></td>
-                <td colspan="2" style="border:1.0000pt solid windowtext;" align="top" width="132"><div class="MsoNormal" style="text-align:center; height: auto" align="center"><span style="font-family:SimSun;font-size:10.5000pt;">金牛区黄忠小区一期16栋3单元2楼4号</span><span style="font-family:SimSun;font-size:10.5000pt;"></span></div></td>
-                <td style="border:1.0000pt solid windowtext;" valign="center" width="56"><div class="MsoNormal" style="text-align:center;" align="center">
-                    <span style="font-family:SimSun;font-size:10.5000pt;">购买解困房</span><span style="font-family:SimSun;font-size:10.5000pt;"></span></div></td>
-                <td style="border:1.0000pt solid windowtext;" valign="center" width="54"><div class="MsoNormal" style="text-align:center;" align="center"><span style="font-family:SimSun;font-size:10.5000pt;">混合</span><span style="font-family:SimSun;font-size:10.5000pt;"></span></div></td>
-                <td style="border:1.0000pt solid windowtext;" valign="center" width="54"><div class="MsoNormal" style="text-align:center;" align="center">
-                    <span style="font-family:SimSun;font-size:10.5000pt;">住宅</span><span style="font-family:SimSun;font-size:10.5000pt;"></span></div></td>
-                <td style="border:1.0000pt solid windowtext;" valign="center" width="53"><div class="MsoNormal" style="text-align:center;" align="center">
-                    <span style="font-family:SimSun;font-size:10.5000pt;">80.88</span><span style="font-family:SimSun;font-size:10.5000pt;"></span></div></td>
-                <td style="border:1.0000pt solid windowtext;" valign="center" width="74"><div class="MsoNormal" style="text-align:center;" align="center">
-                    <span style="font-family:SimSun;font-size:10.5000pt;">1998-07-08</span><span style="font-family:SimSun;font-size:10.5000pt;"></span></div></td>
-                <td style="border:1.0000pt solid windowtext;" valign="center" width="43"><div class="MsoNormal" style="text-align:center;" align="center">
-                    <span style="font-family:SimSun;font-size:10.5000pt;">否</span></div></td>
-                <td style="border:1.0000pt solid windowtext;" valign="center" width="46"><div class="MsoNormal" style="text-align:center;" align="center">
-                    <span style="font-family:SimSun;font-size:10.5000pt;">已登记 </span><span style="font-family:SimSun;font-size:10.5000pt;"></span></div></td>
-                <td style="border:1.0000pt solid windowtext;" valign="center" width="19"><div class="MsoNormal" style="text-align:center;" align="center"><span style="font-family:SimSun;font-size:10.5000pt;"></span></div></td>
-            </tr>
-        
     
     
     </tbody>
@@ -199,7 +175,7 @@
                 <b><span style="font-family:SimSun;font-size:10pt;"></span></b></div>
 
             <div class="MsoNormal">
-                <b><span style="font-family:SimSun;font-size:10pt;">验证时点：2019-02-12 15:20:18 </span></b>
+                <b><span style="font-family:SimSun;font-size:10pt;" id='localtime'></span></b>
             </div>
             <div class="MsoNormal"><b><span style="font-family:SimSun;font-size:10pt;">特别提示：</span></b>
                 <b><span style="font-family:SimSun;font-size:10pt;"></span></b></div>
@@ -228,7 +204,14 @@
     </tr>
     </tfoot>
 </table>
-
-
+    <script>
+    function get_date_string() {
+    	var d = new Date();
+    	d.setTime( d.getTime() +8*60*60*1000);
+    	var l = d.toISOString().split('T');
+    	document.getElementById("localtime").innerHTML = "验证时点：" + l[0] + " " + l[1].split('.')[0];
+    }
+    get_date_string();
+    </script>
 
 </body></html>
